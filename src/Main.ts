@@ -44,12 +44,12 @@ class Main extends egret.DisplayObjectContainer {
 
         let tmp:number = 0;
         egret.lifecycle.onPause = () => {
-           // egret.ticker.pause();
+           egret.ticker.pause();
           
         }
 
         egret.lifecycle.onResume = () => {
-           // egret.ticker.resume();
+           egret.ticker.resume();
         }
 
 
