@@ -46,23 +46,61 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 //Demo 游戏
 var Monster = (function (_super) {
     __extends(Monster, _super);
-    function Monster(value) {
-        var _this = _super.call(this, value) || this;
+    function Monster(gName, _texTureArr, _difangmonsterConfig) {
+        var _this = _super.call(this) || this;
         _this.difangMosterCurrentState = 0;
         _this.gName = "";
+        _this.activeType = "move"; //默认的动作类型
+        _this.gName = gName;
+        _this.monsterbmp = new egret.Bitmap();
+        _this.difangmonsterConfig = _difangmonsterConfig;
+        Number();
+        _this.currentActiveTextArr = _difangmonsterConfig[_this.activeType];
+        _this.difangMosterCurrentState = _this.converNumberToInt(Math.random() * _this.currentActiveTextArr.length);
+        _this.monsterbmp.texture = _texTureArr[_this.currentActiveTextArr[_this.difangMosterCurrentState]];
+        _this.texTureArr = _texTureArr;
+        _this.monsterbmp.x = -95;
+        _this.monsterbmp.y = -174;
+        _this.addChild(_this.monsterbmp);
         return _this;
     }
+    Monster.prototype.converNumberToInt = function (n) {
+        var str = n.toFixed(0);
+        return parseInt(str);
+    };
     Monster.prototype.update = function () {
-        if (this.difangMosterCurrentState < this.texTureArr.length - 1)
+        if (this.difangMosterCurrentState < this.difangmonsterConfig[this.activeType].length - 1)
             this.difangMosterCurrentState++;
         else {
             this.difangMosterCurrentState = 0;
         }
-        this.texture = this.texTureArr[this.difangMosterCurrentState];
+        this.monsterbmp.texture = this.texTureArr[this.currentActiveTextArr[this.difangMosterCurrentState]];
     };
     return Monster;
-}(egret.Bitmap));
+}(egret.Sprite));
 __reflect(Monster.prototype, "Monster");
+var SelfMonster = (function (_super) {
+    __extends(SelfMonster, _super);
+    function SelfMonster(gName, _texTureArr, _difangmonsterConfig) {
+        var _this = _super.call(this, gName, _texTureArr, _difangmonsterConfig) || this;
+        _this.activePinlvCount = 0;
+        _this.activePinlvCount = _this.converNumberToInt(Math.random() * 8);
+        return _this;
+    }
+    SelfMonster.prototype.update = function () {
+        _super.prototype.update.call(this);
+        if (this.activePinlvCount > 10) {
+            this.activePinlvCount = 0;
+            //攻击
+            this.parent.dispatchEventWith("toActiveEvent", false, this);
+        }
+        else {
+            this.activePinlvCount++;
+        }
+    };
+    return SelfMonster;
+}(Monster));
+__reflect(SelfMonster.prototype, "SelfMonster");
 var TestGameScene = (function (_super) {
     __extends(TestGameScene, _super);
     function TestGameScene() {
@@ -73,21 +111,33 @@ var TestGameScene = (function (_super) {
     }
     //开始游戏
     TestGameScene.prototype.start = function () {
+        this.difangMosterArr = [];
+        this.myMonsterArr = [];
         this.loadResource();
     };
     TestGameScene.prototype.loadResource = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var i;
+            var loader;
             return __generator(this, function (_a) {
-                this.texTureArr = [];
-                for (i = 1; i < 12; i++) {
-                    this.texTureArr.push(RES.getRes("bbb_json#" + i));
-                }
-                //当前场景额资源加载完毕后，开始游戏
-                this.startGame();
+                loader = new egret.URLLoader();
+                loader.addEventListener(egret.Event.COMPLETE, this.onMonsterConfigLoadend, this);
+                loader.addEventListener(egret.IOErrorEvent.IO_ERROR, function (e) {
+                    console.log("配置文件加载失败");
+                }, this);
+                loader.load(new egret.URLRequest("./resource/assets/bbb_ani_config.json"));
                 return [2 /*return*/];
             });
         });
+    };
+    TestGameScene.prototype.onMonsterConfigLoadend = function (e) {
+        var data = e.target.data;
+        this.difangmonsterConfig = JSON.parse(data);
+        this.texTureArr = [];
+        for (var i = 1; i < 12; i++) {
+            this.texTureArr.push(RES.getRes("bbb_json#" + i));
+        }
+        //当前场景额资源加载完毕后，开始游戏
+        this.startGame();
     };
     TestGameScene.prototype.startGame = function () {
         this.sW = this.stage.stageWidth;
@@ -120,21 +170,34 @@ var TestGameScene = (function (_super) {
         this.t.addEventListener(egret.TimerEvent.TIMER, this.reCountDojishi, this);
         this.t.start();
         //创建敌方monster
-        this.difangMosterArr = [];
         for (var i = 0; i < 15; i++) {
-            var mon = this.createDifangMonster();
-            mon.gName = "dMonstor_" + i;
+            var mon = this.createDifangMonster("dMonstor_" + i);
             this.difangMosterArr.push(mon);
             this.addChild(mon);
             mon.x = this.sW - 450 + Math.random() * 300;
             mon.y = 100 + Math.random() * (this.sH - 300);
         }
+        //创建有方monster
+        var offset = 250;
+        for (var i = 0; i < 3; i++) {
+            var mon = this.createMyMonster("mMonster" + i);
+            this.myMonsterArr.push(mon);
+            this.addChild(mon);
+            mon.x = 150;
+            mon.y = i * 150 + offset;
+        }
+        this.addEventListener("toActiveEvent", this.gongji, this);
     };
-    TestGameScene.prototype.createDifangMonster = function () {
-        var bm = new Monster();
-        bm.texTureArr = this.texTureArr;
-        bm.difangMosterCurrentState = Math.random() * bm.texTureArr.length;
-        bm.texture = bm.texTureArr[bm.difangMosterCurrentState];
+    TestGameScene.prototype.gongji = function (e) {
+        var target = e.data;
+        console.log(target.gName, "发起了攻击");
+    };
+    TestGameScene.prototype.createMyMonster = function (gName) {
+        var bm = new SelfMonster(gName, [RES.getRes("2_png")], { "active": [0], "move": [0] });
+        return bm;
+    };
+    TestGameScene.prototype.createDifangMonster = function (gName) {
+        var bm = new Monster(gName, this.texTureArr, this.difangmonsterConfig);
         return bm;
     };
     //更新各个画布的状态
@@ -144,6 +207,9 @@ var TestGameScene = (function (_super) {
         }
         this.preStemp = stemp;
         this.difangMosterArr.forEach(function (v, i) {
+            v.update();
+        });
+        this.myMonsterArr.forEach(function (v, i) {
             v.update();
         });
         return true;

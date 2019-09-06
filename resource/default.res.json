@@ -1,7 +1,7 @@
 {
 	"groups": [
 		{
-			"keys": "bg_jpg,egret_icon_png,description_json,bbb_json,2_png",
+			"keys": "bg_jpg,egret_icon_png,description_json,bbb_json,2_png,bbb_ani_config_json,2_ani_config_json",
 			"name": "preload"
 		}
 	],
@@ -31,6 +31,16 @@
 			"name": "2_png",
 			"type": "image",
 			"url": "assets/2.png"
+		},
+		{
+			"name": "bbb_ani_config_json",
+			"type": "json",
+			"url": "assets/bbb_ani_config.json"
+		},
+		{
+			"name": "2_ani_config_json",
+			"type": "json",
+			"url": "assets/2_ani_config.json"
 		}
 	]
 }

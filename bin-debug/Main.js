@@ -86,10 +86,10 @@ var Main = (function (_super) {
         });
         var tmp = 0;
         egret.lifecycle.onPause = function () {
-            // egret.ticker.pause();
+            egret.ticker.pause();
         };
         egret.lifecycle.onResume = function () {
-            // egret.ticker.resume();
+            egret.ticker.resume();
         };
         this.runGame().catch(function (e) {
             console.log(e);

@@ -1,18 +1,60 @@
 //Demo 游戏
-class Monster extends egret.Bitmap{
+class Monster extends egret.Sprite{
     public difangMosterCurrentState = 0;
     public texTureArr:egret.Texture[];
     public gName:string = "";
-    constructor(value?:egret.Texture){
-        super(value);
+    public monsterbmp:egret.Bitmap;
+    public xuecao:egret.Shape;//血条
+    public difangmonsterConfig:Object;//动作配置
+    public activeType:string= "move";//默认的动作类型
+    public currentActiveTextArr:number[];
+    
+
+    constructor(gName:string,_texTureArr:egret.Texture[],_difangmonsterConfig:Object){
+        super();
+        this.gName = gName;
+        this.monsterbmp = new egret.Bitmap();
+        this.difangmonsterConfig = _difangmonsterConfig;Number()
+        this.currentActiveTextArr = _difangmonsterConfig[this.activeType]
+        this.difangMosterCurrentState = this.converNumberToInt(Math.random()*this.currentActiveTextArr.length);
+        this.monsterbmp.texture = _texTureArr[this.currentActiveTextArr[this.difangMosterCurrentState]];
+        this.texTureArr = _texTureArr;
+        this.monsterbmp.x = -95;
+        this.monsterbmp.y = -174;
+        this.addChild(this.monsterbmp);
     }
+
+    public converNumberToInt(n:number){
+        let str = n.toFixed(0);
+        return parseInt(str);
+    }
+
     public update(){
-            if(this.difangMosterCurrentState < this.texTureArr.length - 1)
+            if(this.difangMosterCurrentState < this.difangmonsterConfig[this.activeType].length - 1)
                 this.difangMosterCurrentState ++;
             else{
                 this.difangMosterCurrentState = 0;
             }
-        this.texture = this.texTureArr[this.difangMosterCurrentState];
+        this.monsterbmp.texture = this.texTureArr[this.currentActiveTextArr[this.difangMosterCurrentState]];
+    }
+}
+
+class SelfMonster extends Monster{
+    protected activePinlvCount:number = 0;
+    constructor(gName:string,_texTureArr:egret.Texture[],_difangmonsterConfig:Object){
+        super(gName,_texTureArr,_difangmonsterConfig);
+        this.activePinlvCount = this.converNumberToInt(Math.random()*8);
+    }
+    public update(){
+        super.update();
+        if(this.activePinlvCount > 10){
+            this.activePinlvCount = 0
+            //攻击
+            this.parent.dispatchEventWith("toActiveEvent",false,this);
+        }else{
+            this.activePinlvCount++;
+        }
+           
     }
 }
 
@@ -25,16 +67,31 @@ class TestGameScene extends egret.Sprite{
     private texTureArr:egret.Texture[];
     private difangMosterArr:Monster[];
     private preStemp:number = 0;
+    private difangmonsterConfig:Object;
+    private myMonsterArr:SelfMonster[];
     constructor(){
         super();
     }
 
     //开始游戏
     public start(){
+        this.difangMosterArr = [];
+        this.myMonsterArr = [];
         this.loadResource();
     }
 
     private async loadResource(){
+        let loader = new egret.URLLoader();
+        loader.addEventListener(egret.Event.COMPLETE,this.onMonsterConfigLoadend,this);
+        loader.addEventListener(egret.IOErrorEvent.IO_ERROR,(e:egret.IOErrorEvent)=>{
+            console.log("配置文件加载失败");
+        },this)
+        loader.load(new egret.URLRequest("./resource/assets/bbb_ani_config.json"))
+    }
+
+    private onMonsterConfigLoadend(e:egret.Event){
+        let data = <string>(<egret.URLLoader>e.target).data;
+        this.difangmonsterConfig = JSON.parse(data);
         this.texTureArr = [];
         for(let i = 1;i<12;i++){
             this.texTureArr.push(RES.getRes("bbb_json#"+i));
@@ -75,21 +132,37 @@ class TestGameScene extends egret.Sprite{
         this.t.start();
 
         //创建敌方monster
-        this.difangMosterArr = [];
         for (let i=0;i<15;i++){
-            let mon = this.createDifangMonster();
-            mon.gName = "dMonstor_"+i;
+            let mon = this.createDifangMonster("dMonstor_"+i);
             this.difangMosterArr.push(mon);
             this.addChild(mon);
             mon.x = this.sW - 450 + Math.random()*300;
             mon.y = 100 + Math.random()*(this.sH - 300);
         }
+
+        //创建有方monster
+        let offset = 250;
+        for (let i=0;i<3;i++){
+            let mon = this.createMyMonster("mMonster"+i);
+            this.myMonsterArr.push(mon);
+            this.addChild(mon);
+            mon.x = 150;
+            mon.y = i*150 + offset;
+        }
+        this.addEventListener("toActiveEvent",this.gongji,this);
     }
-    private createDifangMonster(){
-        let bm = new Monster();
-        bm.texTureArr = this.texTureArr;
-        bm.difangMosterCurrentState = Math.random()*bm.texTureArr.length;
-        bm.texture = bm.texTureArr[bm.difangMosterCurrentState];
+
+    private gongji(e:egret.Event){
+        let target = e.data as SelfMonster;
+        console.log(target.gName,"发起了攻击");
+    }
+
+    private createMyMonster(gName:string){
+        let bm = new SelfMonster(gName,[RES.getRes("2_png")],{"active":[0],"move":[0]});
+        return bm;
+    }
+    private createDifangMonster(gName:string){
+        let bm = new Monster(gName,this.texTureArr,this.difangmonsterConfig);
         return bm;
     }
 
@@ -100,6 +173,10 @@ class TestGameScene extends egret.Sprite{
         }
         this.preStemp = stemp;
         this.difangMosterArr.forEach((v,i)=>{
+            v.update();
+        })
+
+        this.myMonsterArr.forEach((v,i)=>{
             v.update();
         })
         return true;
