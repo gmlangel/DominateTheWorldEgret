@@ -56,11 +56,11 @@ var Monster = (function (_super) {
         _this.difangmonsterConfig = _difangmonsterConfig;
         Number();
         _this.currentActiveTextArr = _difangmonsterConfig[_this.activeType];
-        _this.difangMosterCurrentState = _this.converNumberToInt(Math.random() * _this.currentActiveTextArr.length);
+        _this.difangMosterCurrentState = _this.converNumberToInt(Math.random() * (_this.currentActiveTextArr.length - 1));
         _this.monsterbmp.texture = _texTureArr[_this.currentActiveTextArr[_this.difangMosterCurrentState]];
         _this.texTureArr = _texTureArr;
         _this.monsterbmp.x = -95;
-        _this.monsterbmp.y = -174;
+        _this.monsterbmp.y = -87;
         _this.addChild(_this.monsterbmp);
         return _this;
     }
@@ -101,6 +101,40 @@ var SelfMonster = (function (_super) {
     return SelfMonster;
 }(Monster));
 __reflect(SelfMonster.prototype, "SelfMonster");
+var ZidanMonster = (function (_super) {
+    __extends(ZidanMonster, _super);
+    function ZidanMonster(gName, _texture) {
+        var _this = _super.call(this) || this;
+        _this.speed = 20; //每帧移动3像素
+        _this.gName = gName;
+        _this.bmp = new egret.Bitmap();
+        _this.bmp.scaleX = _this.bmp.scaleY = 0.5;
+        _this.bmp.anchorOffsetX = 82;
+        _this.bmp.anchorOffsetY = 82;
+        _this.addChild(_this.bmp);
+        _this.bmp.texture = _texture;
+        return _this;
+    }
+    ZidanMonster.prototype.update = function () {
+        this.bmp.rotation += 5;
+        var tx = this.targetMonster.x - this.x;
+        var ty = this.targetMonster.y - this.y;
+        var len = Math.sqrt(Math.pow(Math.abs(tx), 2) + Math.pow(Math.abs(ty), 2)); //获取当前子弹与目标的距离
+        if (len < this.speed) {
+            //已经发生碰撞
+            this.parent.dispatchEventWith("hasHit", false, this);
+        }
+        else {
+            //计算位移距离并移动
+            var an = Math.atan2(ty, tx);
+            var p = egret.Point.polar(this.speed, an);
+            this.x += p.x;
+            this.y += p.y;
+        }
+    };
+    return ZidanMonster;
+}(egret.Sprite));
+__reflect(ZidanMonster.prototype, "ZidanMonster");
 var TestGameScene = (function (_super) {
     __extends(TestGameScene, _super);
     function TestGameScene() {
@@ -113,6 +147,7 @@ var TestGameScene = (function (_super) {
     TestGameScene.prototype.start = function () {
         this.difangMosterArr = [];
         this.myMonsterArr = [];
+        this.zidanMonsterArr = [];
         this.loadResource();
     };
     TestGameScene.prototype.loadResource = function () {
@@ -128,6 +163,10 @@ var TestGameScene = (function (_super) {
                 return [2 /*return*/];
             });
         });
+    };
+    TestGameScene.prototype.converNumberToInt = function (n) {
+        var str = n.toFixed(0);
+        return parseInt(str);
     };
     TestGameScene.prototype.onMonsterConfigLoadend = function (e) {
         var data = e.target.data;
@@ -187,10 +226,27 @@ var TestGameScene = (function (_super) {
             mon.y = i * 150 + offset;
         }
         this.addEventListener("toActiveEvent", this.gongji, this);
+        this.addEventListener("hasHit", this.pengzhuang, this);
+    };
+    TestGameScene.prototype.pengzhuang = function (e) {
+        var target = e.data;
+        var index = this.zidanMonsterArr.indexOf(target);
+        if (index > -1) {
+            this.zidanMonsterArr.splice(index, 1);
+            this.removeChild(target);
+        }
     };
     TestGameScene.prototype.gongji = function (e) {
         var target = e.data;
         console.log(target.gName, "发起了攻击");
+        //创建子弹
+        var zidan = new ZidanMonster("zidan1", RES.getRes("2_png"));
+        zidan.x = target.x;
+        zidan.y = target.y;
+        var idx = this.converNumberToInt(Math.random() * (this.difangMosterArr.length - 1));
+        zidan.targetMonster = this.difangMosterArr[idx];
+        this.addChild(zidan);
+        this.zidanMonsterArr.push(zidan);
     };
     TestGameScene.prototype.createMyMonster = function (gName) {
         var bm = new SelfMonster(gName, [RES.getRes("2_png")], { "active": [0], "move": [0] });
@@ -202,8 +258,14 @@ var TestGameScene = (function (_super) {
     };
     //更新各个画布的状态
     TestGameScene.prototype.update = function (stemp) {
-        if (stemp - this.preStemp < 120) {
+        if (stemp - this.preStemp < 40) {
             return false; //每隔80毫秒更新一次场景动画，  测试用
+        }
+        this.zidanMonsterArr.forEach(function (v, i) {
+            v.update();
+        });
+        if (stemp - this.preStemp < 120) {
+            return true; //每隔80毫秒更新一次场景动画，  测试用
         }
         this.preStemp = stemp;
         this.difangMosterArr.forEach(function (v, i) {

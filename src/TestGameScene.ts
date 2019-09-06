@@ -16,11 +16,11 @@ class Monster extends egret.Sprite{
         this.monsterbmp = new egret.Bitmap();
         this.difangmonsterConfig = _difangmonsterConfig;Number()
         this.currentActiveTextArr = _difangmonsterConfig[this.activeType]
-        this.difangMosterCurrentState = this.converNumberToInt(Math.random()*this.currentActiveTextArr.length);
+        this.difangMosterCurrentState = this.converNumberToInt(Math.random()*(this.currentActiveTextArr.length - 1));
         this.monsterbmp.texture = _texTureArr[this.currentActiveTextArr[this.difangMosterCurrentState]];
         this.texTureArr = _texTureArr;
         this.monsterbmp.x = -95;
-        this.monsterbmp.y = -174;
+        this.monsterbmp.y = -87;
         this.addChild(this.monsterbmp);
     }
 
@@ -58,6 +58,42 @@ class SelfMonster extends Monster{
     }
 }
 
+class ZidanMonster extends egret.Sprite{
+    public targetMonster:Monster;
+    private bmp:egret.Bitmap;
+    public gName:string;
+    private speed:number = 20;//每帧移动3像素
+    constructor(gName:string,_texture:egret.Texture){
+        super();
+        this.gName = gName;
+        this.bmp = new egret.Bitmap();
+        this.bmp.scaleX = this.bmp.scaleY = 0.5;
+        this.bmp.anchorOffsetX = 82;
+        this.bmp.anchorOffsetY = 82;
+        this.addChild(this.bmp);
+        this.bmp.texture = _texture;
+        
+    }
+
+    public update(){
+        this.bmp.rotation += 5;
+        let tx = this.targetMonster.x - this.x;
+        let ty = this.targetMonster.y - this.y;
+        let len = Math.sqrt(Math.pow(Math.abs(tx),2) + Math.pow(Math.abs(ty),2));//获取当前子弹与目标的距离
+        if(len < this.speed){
+            //已经发生碰撞
+            this.parent.dispatchEventWith("hasHit",false,this);
+        }else{
+            //计算位移距离并移动
+            let an = Math.atan2(ty,tx);
+            let p = egret.Point.polar(this.speed,an);
+            this.x += p.x;
+            this.y += p.y;
+        }
+    }
+
+}
+
 class TestGameScene extends egret.Sprite{
     private sW:number;
     private sH:number;
@@ -69,6 +105,7 @@ class TestGameScene extends egret.Sprite{
     private preStemp:number = 0;
     private difangmonsterConfig:Object;
     private myMonsterArr:SelfMonster[];
+    private zidanMonsterArr:ZidanMonster[];
     constructor(){
         super();
     }
@@ -77,6 +114,7 @@ class TestGameScene extends egret.Sprite{
     public start(){
         this.difangMosterArr = [];
         this.myMonsterArr = [];
+        this.zidanMonsterArr = [];
         this.loadResource();
     }
 
@@ -87,6 +125,11 @@ class TestGameScene extends egret.Sprite{
             console.log("配置文件加载失败");
         },this)
         loader.load(new egret.URLRequest("./resource/assets/bbb_ani_config.json"))
+    }
+
+    public converNumberToInt(n:number){
+        let str = n.toFixed(0);
+        return parseInt(str);
     }
 
     private onMonsterConfigLoadend(e:egret.Event){
@@ -150,11 +193,29 @@ class TestGameScene extends egret.Sprite{
             mon.y = i*150 + offset;
         }
         this.addEventListener("toActiveEvent",this.gongji,this);
+        this.addEventListener("hasHit",this.pengzhuang,this)
+    }
+
+    private pengzhuang(e:egret.Event){
+        let target = e.data as ZidanMonster;
+        let index = this.zidanMonsterArr.indexOf(target);
+        if(index > -1){
+            this.zidanMonsterArr.splice(index,1);
+            this.removeChild(target);
+        }
     }
 
     private gongji(e:egret.Event){
         let target = e.data as SelfMonster;
         console.log(target.gName,"发起了攻击");
+        //创建子弹
+        let zidan = new ZidanMonster("zidan1",RES.getRes("2_png"));
+        zidan.x = target.x;
+        zidan.y = target.y;
+        let idx = this.converNumberToInt(Math.random()*(this.difangMosterArr.length - 1))
+        zidan.targetMonster = this.difangMosterArr[idx];
+        this.addChild(zidan);
+        this.zidanMonsterArr.push(zidan);
     }
 
     private createMyMonster(gName:string){
@@ -168,8 +229,16 @@ class TestGameScene extends egret.Sprite{
 
     //更新各个画布的状态
     public update(stemp:number){
-        if(stemp - this.preStemp < 120){
+        if(stemp - this.preStemp < 40){
             return false;//每隔80毫秒更新一次场景动画，  测试用
+        }
+
+        this.zidanMonsterArr.forEach((v,i)=>{
+            v.update();
+        })
+
+        if(stemp - this.preStemp < 120){
+            return true;//每隔80毫秒更新一次场景动画，  测试用
         }
         this.preStemp = stemp;
         this.difangMosterArr.forEach((v,i)=>{
@@ -179,6 +248,7 @@ class TestGameScene extends egret.Sprite{
         this.myMonsterArr.forEach((v,i)=>{
             v.update();
         })
+
         return true;
     }
 
